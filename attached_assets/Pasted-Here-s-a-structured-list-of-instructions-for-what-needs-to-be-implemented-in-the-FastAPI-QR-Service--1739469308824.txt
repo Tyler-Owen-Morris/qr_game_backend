@@ -1,0 +1,208 @@
+Here's a structured list of instructions for what needs to be implemented in the FastAPI QR Service script.
+
+📌 FastAPI QR Code Microservice - Implementation Instructions
+1. Install Required Dependencies
+Ensure the following dependencies are installed before proceeding:
+pip install fastapi uvicorn asyncpg sqlalchemy alembic websockets
+
+FastAPI: Core framework.
+Uvicorn: ASGI server.
+Asyncpg: Asynchronous PostgreSQL driver.
+SQLAlchemy: ORM for database interaction.
+Alembic: Database migrations.
+Websockets: WebSocket support.
+
+2. Server Configuration
+2.1 Define Environment Variables
+Create a .env file for database credentials:
+DATABASE_URL=postgresql+asyncpg://user:password@localhost/dbname
+
+Store database credentials securely.
+Use a .env loader in FastAPI.
+2.2 Database Connection
+Establish asynchronous connection to PostgreSQL using asyncpg.
+Implement connection pooling for efficiency.
+
+3. Define API Endpoints
+The QR microservice will include the following routes:
+3.1 QR Code Scan Endpoint
+Route: POST /scan
+
+
+Input:
+
+ {
+    "player_id": "uuid",
+    "qr_code": "string",
+    "latitude": "float",
+    "longitude": "float"
+}
+
+
+Processing Steps:
+
+
+Validate player_id.
+Fetch QR code metadata from the database.
+Validate location presence (if required).
+Determine QR scan behavior (item_drop, encounter, transportation).
+Log the scan attempt in the database.
+Return an appropriate response.
+Response:
+
+ {
+    "status": "success",
+    "encounter_type": "item_drop",
+    "reward": "spy_gadget"
+}
+ or
+
+ {
+    "status": "failure",
+    "message": "Player must be physically present."
+}
+
+
+
+3.2 Fetch QR Code Metadata
+Route: GET /qr/{code}
+
+
+Input: code (string)
+
+
+Processing Steps:
+
+
+Query the qr_codes table by code.
+Return metadata and behavior information.
+Response:
+
+ {
+    "code": "spy123",
+    "description": "Top-secret location",
+    "scan_type": "encounter",
+    "requires_location": true
+}
+
+
+
+3.3 Fetch Player Scan History
+Route: GET /player/{id}/history
+
+
+Input: player_id (UUID)
+
+
+Processing Steps:
+
+
+Query player_scans table.
+Return a list of scan records.
+Response:
+
+ {
+    "scans": [
+        {
+            "qr_code": "spy123",
+            "scan_time": "2025-02-12T10:00:00Z",
+            "success": true
+        }
+    ]
+}
+
+
+
+3.4 WebSocket Endpoint for Real-Time QR Scan Events
+Route: GET /ws/{player_id}
+
+
+Processing Steps:
+
+
+Accept a WebSocket connection.
+Store the connection for event-based updates.
+Listen to PostgreSQL LISTEN/NOTIFY for QR scan events.
+Broadcast real-time scan events to connected clients.
+Example WebSocket Message Sent to Client:
+
+ {
+    "event": "qr_scan",
+    "player_id": "uuid",
+    "qr_code": "spy123"
+}
+
+
+
+4. Database Schema (SQLAlchemy Models)
+4.1 QR Codes Table
+Fields:
+id (Primary Key)
+code (Unique string)
+description (Text)
+scan_type (item_drop, encounter, transportation)
+location (Geography Point, if applicable)
+
+4.2 Encounters Table
+Fields:
+id (Primary Key)
+qr_code_id (Foreign Key)
+puzzle_type (decryption, pattern, hacking)
+difficulty_level (Integer 1-10)
+data (JSONB)
+
+4.3 Player Scans Table
+Fields:
+id (Primary Key)
+player_id (Foreign Key)
+qr_code_id (Foreign Key)
+scan_time (Timestamp)
+success (Boolean)
+
+4.4 Players Table
+Fields:
+id (UUID Primary Key)
+username (Unique string)
+
+5. Implement PostgreSQL LISTEN/NOTIFY for Real-Time Events
+5.1 SQL Trigger
+Create a trigger to notify FastAPI when a QR scan is recorded.
+CREATE FUNCTION notify_qr_scan() RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM pg_notify('qr_scan', json_build_object(
+        'player_id', NEW.player_id,
+        'qr_code', NEW.qr_code_id
+    )::text);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER qr_scan_trigger
+AFTER INSERT ON player_scans
+FOR EACH ROW EXECUTE FUNCTION notify_qr_scan();
+
+This will automatically push notifications when a player scans a QR code.
+
+5.2 FastAPI Listener for PostgreSQL Events
+Implement an async task that:
+Connects to PostgreSQL.
+Subscribes to LISTEN qr_scan.
+Forwards messages to active WebSocket clients.
+
+6. WebSocket Connection Handling
+Store active WebSocket connections.
+Send real-time updates when a scan event occurs.
+
+7. API Authentication & Security
+Implement OAuth2 or JWT-based authentication.
+Restrict QR scanning API to authenticated users only.
+
+8. Deployment Instructions
+Set Up PostgreSQL + PostGIS on the cloud.
+Deploy FastAPI using Uvicorn:
+ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+
+Use a Process Manager (e.g., gunicorn, supervisord) for production.
+Enable WebSocket Support on the server.
+
