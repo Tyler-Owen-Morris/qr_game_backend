@@ -43,6 +43,7 @@ class ConnectionManager:
 
     async def send_login_success(self, session_id: str, token: str):
         if session_id in self.login_session_connections:
+            print(session_id,token)
             await self.login_session_connections[session_id].send_text(
                 json.dumps({
                     "event": "login_success",

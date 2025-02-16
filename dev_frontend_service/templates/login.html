@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>QR Login Test</title>
+    <style>
+      .container {
+        max-width: 600px;
+        margin: 50px auto;
+        text-align: center;
+      }
+      .qr-container {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      .status {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>QR Code Login Test</h1>
+      <div class="qr-container">
+        <img src="data:image/png;base64,{{ qr_code }}" alt="Login QR Code" />
+        <p>Scan this QR code with your mobile app to login</p>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+      const sessionId = "{{ session_id }}";
+
+      // Connect to FastAPI WebSocket
+      const ws = new WebSocket(`ws://localhost:8000/ws/login/${sessionId}`);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.event === "login_success") {
+          // Store the token
+          localStorage.setItem("token", data.token);
+          const token = data.token;
+          //document.cookie = `auth_token=${data.token}; path=/; Secure; HttpOnly; SameSite=Strict;`;
+
+          // Show success message
+          const status = document.getElementById("status");
+          status.textContent = "Login successful! Redirecting...";
+          status.className = "status success";
+          status.style.display = "block";
+
+          if (token) {
+            fetch("/set-session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token }),
+            }).then(() => window.location.reload());
+          }
+
+          // Redirect to main app (simulated)
+          //   setTimeout(() => {
+          //     window.location.href = "/";
+          //   }, 2000);
+        }
+      };
+
+      ws.onclose = () => {
+        const status = document.getElementById("status");
+        status.textContent = "Connection closed. Please refresh the page.";
+        status.className = "status error";
+        status.style.display = "block";
+      };
+    </script>
+  </body>
+</html>

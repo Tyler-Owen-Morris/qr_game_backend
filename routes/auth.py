@@ -95,7 +95,9 @@ async def complete_qr_login(
     current_user: Player = Depends(get_current_user)
 ):
     """Complete QR login from mobile device"""
+    print("login request from qr:",login_request)
     session = qr_login_sessions.get(login_request.session_id)
+    print(session)
     if not session:
         raise HTTPException(status_code=400, detail="Invalid session")
 

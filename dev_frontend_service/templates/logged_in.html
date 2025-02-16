@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Logged In</title>
+    <style>
+      .container {
+        max-width: 600px;
+        margin: 50px auto;
+        text-align: center;
+      }
+      .status {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .logout-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .logout-button:hover {
+        background-color: #c82333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Welcome!</h1>
+      <div class="status">
+        <p>You are logged in.</p>
+        <!-- <p><strong>Token:</strong> {{ token }}</p> -->
+      </div>
+      <button class="logout-button" onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+      function logout() {
+        fetch("/logout", { method: "GET" }).then(() => {
+          console.log("loggingout");
+          window.location.href = "/";
+        });
+      }
+    </script>
+  </body>
+</html>
