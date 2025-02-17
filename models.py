@@ -22,15 +22,24 @@ class QRCode(Base):
     scan_type = Column(String)  # item_drop, encounter, transportation
     location = Column(Geography(geometry_type='POINT', srid=4326))
     requires_location = Column(Boolean, default=False)
+    expiration_date = Column(DateTime, nullable=True)  # Optional expiration (e.g., seasonal event)
+    scan_cooldown_seconds = Column(Integer, nullable=True)  # Cooldown before re-scanning allowed
+    max_scans_per_player = Column(Integer, nullable=True)  # Limits how many times a player can scan this
+    is_repeatable = Column(Boolean, default=False)  # Determines if the QR code can be re-scanned after cooldown
+    reward_data = Column(JSONB, nullable=True)  # JSON-encoded reward structure (future extensibility)
+    encounter_id = Column(UUID(as_uuid=True), ForeignKey('encounters.id'), nullable=True)  # Links to an encounter if applicable
+
 
 class Encounter(Base):
     __tablename__ = "encounters"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'))
+    qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'), nullable=True)  # Can be null if this is a shared encounter
     puzzle_type = Column(String)  # decryption, pattern, hacking
     difficulty_level = Column(Integer)
     data = Column(JSONB)
-
+    repeatable = Column(Boolean, default=False)  # Determines if the event resets later
+    expires_at = Column(DateTime, nullable=True)  # Optional expiration for seasonal encounters
+    
 class PlayerScan(Base):
     __tablename__ = "player_scans"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -40,3 +49,5 @@ class PlayerScan(Base):
     success = Column(Boolean, default=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    attempt_number = Column(Integer, default=1)  # Tracks number of times player scanned this code
+    next_scan_available_at = Column(DateTime, nullable=True)  # When player can scan it again (null if one-time use)

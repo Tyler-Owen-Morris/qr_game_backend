@@ -5,7 +5,9 @@ from database import get_db
 from models import QRCode, PlayerScan, Player
 from schemas import QRScanRequest, QRScanResponse, QRCodeMetadata
 from utils.location import validate_location
+from utils.generate_qr_code import generate_qr_code
 from auth.utils import get_current_user
+from datetime import timedelta, datetime
 import logging
 import uuid
 
@@ -30,16 +32,8 @@ async def scan_qr_code(
     qr_code = qr_code.scalar_one_or_none()
 
     if not qr_code:
-        # Create new QR code with default values
-        qr_code = QRCode(
-            id=uuid.uuid4(),
-            code=scan_request.qr_code,
-            description=f"Dynamic QR Code {scan_request.qr_code}",
-            scan_type="item_drop",  # Default type
-            requires_location=False  # Default to not requiring location
-        )
-        db.add(qr_code)
-        await db.flush()
+
+        qr_code = await generate_qr_code(scan_request.qr_code, db, latitude=scan_request.latitude, longitude=scan_request.longitude)
 
     # Check location if required
     location_valid = True
@@ -53,23 +47,41 @@ async def scan_qr_code(
                 qr_code.location
             )
 
-    # Record the scan
+    # Check how many times the player has scanned this QR code before
+    previous_scans = await db.execute(
+        select(PlayerScan)
+        .where(PlayerScan.player_id == current_user.id)
+        .where(PlayerScan.qr_code_id == qr_code.id)
+    )
+    scan_count = len(previous_scans.scalars().all())  # Get previous scan attempts
+
+    # Determine when the player can scan again
+    next_scan_available_at = None
+    if qr_code.scan_cooldown_seconds:
+        next_scan_available_at = datetime.utcnow() + timedelta(seconds=qr_code.scan_cooldown_seconds)
+
+    # Create new PlayerScan record
     new_scan = PlayerScan(
         player_id=current_user.id,
         qr_code_id=qr_code.id,
         latitude=scan_request.latitude,
         longitude=scan_request.longitude,
+        attempt_number=scan_count + 1,  # Increment scan attempt count
+        next_scan_available_at=next_scan_available_at , # Set cooldown time if applicable,
         success=location_valid
     )
+
     db.add(new_scan)
     await db.commit()
 
+    print("qr_code:", qr_code.reward_data)
     return QRScanResponse(
         status="success",
         encounter_type=qr_code.scan_type,
-        reward="spy_gadget" if qr_code.scan_type == "item_drop" else None,
+        reward_data=qr_code.reward_data if qr_code.reward_data else None,
         message="Location check failed" if not location_valid else None,
-        location_valid=location_valid
+        location_valid=location_valid,
+        ok=True
     )
 
 @router.get("/{code}", response_model=QRCodeMetadata)

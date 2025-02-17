@@ -33,9 +33,10 @@ class QRScanRequest(BaseModel):
 class QRScanResponse(BaseModel):
     status: str
     encounter_type: Optional[str]
-    reward: Optional[str]
+    reward_data: Optional[dict]
     message: Optional[str]
     location_valid: Optional[bool]
+    ok: Optional[bool]
 
 class QRCodeMetadata(BaseModel):
     code: str
