@@ -10,6 +10,38 @@ from models import QRCode, Encounter  # Assuming your models are imported here
 SCAN_TYPES = ["item_drop", "encounter", "transportation"]
 PUZZLE_TYPES = ["decryption", "pattern", "hacking"]
 
+# Define possible item types
+ITEM_TYPES = ["intel_file", "spy_gadget", "digital_currency", "weapon_upgrade", "hacking_tool"]
+
+# Define item properties
+ITEM_DATA = {
+    "intel_file": {
+        "rarity": "common",
+        "description": "A classified document containing sensitive information.",
+        "value": 10
+    },
+    "spy_gadget": {
+        "rarity": "uncommon",
+        "description": "A high-tech gadget used by elite spies.",
+        "value": 50
+    },
+    "digital_currency": {
+        "rarity": "rare",
+        "description": "Encrypted credits used in underground markets.",
+        "value": 100
+    },
+    "weapon_upgrade": {
+        "rarity": "epic",
+        "description": "Enhances your existing weapon capabilities.",
+        "value": 150
+    },
+    "hacking_tool": {
+        "rarity": "legendary",
+        "description": "A powerful tool that can bypass the most secure systems.",
+        "value": 200
+    }
+}
+
 # Define cooldown ranges (in seconds)
 COOLDOWN_RANGES = {
     "item_drop": (3600, 86400),  # 1 hour to 24 hours
@@ -107,6 +139,19 @@ async def generate_qr_code(scan_code: str, db: AsyncSession, latitude: float = N
                 "latitude": latitude,
                 "longitude": longitude
             } if latitude and longitude else None
+        }
+
+        # If item drop, assign a random item
+    elif scan_type == "item_drop":
+        selected_item = random.choice(ITEM_TYPES)
+        item_details = ITEM_DATA[selected_item]
+
+        qr_code.reward_data = {
+            "type": "item_drop",
+            "item_name": selected_item.replace("_", " ").title(),
+            "rarity": item_details["rarity"],
+            "description": item_details["description"],
+            "value": item_details["value"]
         }
     db.add(qr_code)
     await db.flush()

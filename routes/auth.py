@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models import Player
+from sqlalchemy.sql import func
+from models import Player, PlayerScan
 from database import get_db
 from auth.utils import verify_password, get_password_hash, create_access_token, get_current_user
 from datetime import timedelta
@@ -134,6 +135,58 @@ async def complete_qr_login(
 
 @router.get("/me")
 async def read_users_me(
-    current_user: Player = Depends(get_current_user)
+    current_user: Player = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    return current_user
+    player_id = current_user.id
+
+    # Fetch scan counts
+    total_scans_query = select(func.count()).where(
+        PlayerScan.player_id == player_id, PlayerScan.success == True
+    )
+    discovery_scans_query = select(func.count()).where(
+        PlayerScan.player_id == player_id, PlayerScan.scan_type == "discovery"
+    )
+    peer_scans_query = select(func.count()).where(
+        PlayerScan.player_id == player_id, PlayerScan.scan_type == "peer"
+    )
+
+    total_scans_result = await db.execute(total_scans_query)
+    discovery_scans_result = await db.execute(discovery_scans_query)
+    peer_scans_result = await db.execute(peer_scans_query)
+
+    total_scans = total_scans_result.scalar() or 0
+    discovery_scans = discovery_scans_result.scalar() or 0
+    peer_scans = peer_scans_result.scalar() or 0
+
+    # Fetch recent scan history
+    recent_scans_query = (
+        select(PlayerScan.qr_code_id, PlayerScan.scan_time, PlayerScan.success, PlayerScan.scan_type)
+        .where(PlayerScan.player_id == player_id)
+        .order_by(PlayerScan.scan_time.desc())
+        .limit(10)
+    )
+    recent_scans_result = await db.execute(recent_scans_query)
+    recent_scans = [
+        {
+            "qr_code_id": scan.qr_code_id,
+            "scan_time": scan.scan_time.isoformat(),
+            "success": scan.success,
+            "scan_type": scan.scan_type,
+        }
+        for scan in recent_scans_result.all()
+    ]
+
+    return {
+        "id": str(current_user.id),
+        "username": current_user.username,
+        "score": current_user.score,
+        "level": current_user.level,
+        "created_at": current_user.created_at.isoformat(),
+        "scan_counts": {
+            "total": total_scans,
+            "discovery": discovery_scans,
+            "peers": peer_scans,
+        },
+        "recent_scans": recent_scans,
+    }

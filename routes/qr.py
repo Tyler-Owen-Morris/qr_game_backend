@@ -30,9 +30,9 @@ async def scan_qr_code(
         select(QRCode).where(QRCode.code == scan_request.qr_code)
     )
     qr_code = qr_code.scalar_one_or_none()
-
+    scan_type = "standard"
     if not qr_code:
-
+        scan_type = "discovery"
         qr_code = await generate_qr_code(scan_request.qr_code, db, latitude=scan_request.latitude, longitude=scan_request.longitude)
 
     # Check location if required
@@ -68,7 +68,8 @@ async def scan_qr_code(
         longitude=scan_request.longitude,
         attempt_number=scan_count + 1,  # Increment scan attempt count
         next_scan_available_at=next_scan_available_at , # Set cooldown time if applicable,
-        success=location_valid
+        success=location_valid,
+        scan_type=scan_type
     )
 
     db.add(new_scan)

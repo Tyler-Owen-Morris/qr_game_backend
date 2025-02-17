@@ -39,13 +39,14 @@ class Encounter(Base):
     data = Column(JSONB)
     repeatable = Column(Boolean, default=False)  # Determines if the event resets later
     expires_at = Column(DateTime, nullable=True)  # Optional expiration for seasonal encounters
-    
+
 class PlayerScan(Base):
     __tablename__ = "player_scans"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     player_id = Column(UUID(as_uuid=True), ForeignKey('players.id'))
     qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'))
     scan_time = Column(DateTime(timezone=True), server_default=func.now())
+    scan_type = Column(String, nullable=False, server_default="standard")  
     success = Column(Boolean, default=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
