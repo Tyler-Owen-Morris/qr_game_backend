@@ -46,7 +46,8 @@ class PlayerScan(Base):
     player_id = Column(UUID(as_uuid=True), ForeignKey('players.id'))
     qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'))
     scan_time = Column(DateTime(timezone=True), server_default=func.now())
-    scan_type = Column(String, nullable=False, server_default="standard")  
+    scan_type = Column(String, nullable=False, server_default="standard")
+    proximity_status = Column(String) # Tracks status of geofenced validation
     success = Column(Boolean, default=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)

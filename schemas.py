@@ -56,3 +56,17 @@ class WebSocketMessage(BaseModel):
     event: str
     player_id: UUID4
     qr_code: str
+
+class PeerScanRequest(BaseModel):
+    peer_qr: str
+    latitude: float
+    longitude: float
+
+class PeerScanResponse(BaseModel):
+    status: str
+    message: str = None
+    matched_player_id: str = None
+
+class ErrorResponse(BaseModel): # Not currently used
+    status: str = "error"
+    message: str
