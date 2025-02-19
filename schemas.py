@@ -66,6 +66,7 @@ class PeerScanResponse(BaseModel):
     status: str
     message: str = None
     matched_player_id: str = None
+    matched_player_username: str = None
 
 class ErrorResponse(BaseModel): # Not currently used
     status: str = "error"

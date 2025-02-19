@@ -44,7 +44,8 @@ class PlayerScan(Base):
     __tablename__ = "player_scans"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     player_id = Column(UUID(as_uuid=True), ForeignKey('players.id'))
-    qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'))
+    peer_player_id = Column(UUID(as_uuid=True), ForeignKey('players.id'), nullable=True)
+    qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'), nullable=True)
     scan_time = Column(DateTime(timezone=True), server_default=func.now())
     scan_type = Column(String, nullable=False, server_default="standard")
     proximity_status = Column(String) # Tracks status of geofenced validation

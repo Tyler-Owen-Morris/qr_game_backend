@@ -209,13 +209,19 @@ async def validate_peer_scan(
     if distance < 50:  # 50 meters threshold
         proximity_status = "near"
 
+    # Fetch Player 1's info
+    matched_player = await db.get(Player, uuid.UUID(player_id))
+    if not matched_player:
+        return ErrorResponse(message="The matched player no longer exists.")
+
     ###### SUCCESS ######
     scan_time = datetime.utcnow()
     next_scan_at = scan_time + timedelta(seconds=PEER_SCAN_COOLDOWN)
     # Scanner's record (current_user scans player_id)
     scanner_scan = PlayerScan(
         player_id=current_user.id,
-        qr_code_id=uuid.UUID(player_id),  # Using player_id as qr_code_id for peer scans
+        qr_code_id=None,
+        peer_player_id = uuid.UUID(player_id),  # Using player_id as qr_code_id for peer scans
         scan_type="peer",
         proximity_status=proximity_status,
         success=True,
@@ -229,7 +235,8 @@ async def validate_peer_scan(
     # Scanned player's record (player_id scanned by current_user)
     scanned_scan = PlayerScan(
         player_id=uuid.UUID(player_id),
-        qr_code_id=current_user.id,  # Using current_user.id as qr_code_id
+        qr_code_id=None,
+        peer_player_id=current_user.id,
         scan_type="peer",
         proximity_status=proximity_status,
         success=True,
@@ -241,6 +248,12 @@ async def validate_peer_scan(
     db.add(scanned_scan)
 
     await db.commit()
+    # Prepare success message
+    message = (
+        f"Paired successfully with {matched_player.username}! "
+        f"You’re {distance:.2f}m apart." if proximity_status == "near"
+        else f"Paired remotely with {matched_player.username}!"
+    )
 
     # Notify encoding player via Web Socket
     notification = json.dumps({
@@ -256,6 +269,8 @@ async def validate_peer_scan(
 
     # Success response to scanning/decoding client
     return PeerScanResponse(
-        message=f"Paired successfully! You’re {distance:.2f}m apart.",
-        matched_player_id=player_id
+        status="success",
+        message=message,
+        matched_player_id=player_id,
+        matched_player_username=matched_player.username
     )
