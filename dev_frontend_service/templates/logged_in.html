@@ -36,15 +36,48 @@
       <h1>Welcome!</h1>
       <div class="status">
         <p>You are logged in.</p>
+        <p><strong>Username:</strong> <span id="username">Loading...</span></p>
         <!-- <p><strong>Token:</strong> {{ token }}</p> -->
       </div>
       <button class="logout-button" onclick="logout()">Logout</button>
     </div>
 
     <script>
+      // Fetch user info on page load
+      const token = localStorage.getItem("token");
+      const BACKEND_URL = "http://localhost:8000"; // Match frontend.py’s BACKEND_URL
+
+      if (token) {
+        fetch(`${BACKEND_URL}/player/me`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch user info");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            document.getElementById("username").textContent = data.username;
+          })
+          .catch((error) => {
+            console.error("Error fetching user info:", error);
+            document.getElementById("username").textContent =
+              "Error loading username";
+          });
+      } else {
+        // Redirect to login if no token
+        window.location.href = "/";
+      }
+
       function logout() {
+        localStorage.removeItem("token"); // Clear token on logout
         fetch("/logout", { method: "GET" }).then(() => {
-          console.log("loggingout");
+          console.log("Logging out");
           window.location.href = "/";
         });
       }

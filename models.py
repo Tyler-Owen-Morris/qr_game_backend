@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Float, Boolean, DateTime, ForeignKey, Int
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from geoalchemy2 import Geography
+from sqlalchemy.orm import relationship
 from database import Base
 
 class Player(Base):
@@ -44,8 +45,11 @@ class PlayerScan(Base):
     __tablename__ = "player_scans"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     player_id = Column(UUID(as_uuid=True), ForeignKey('players.id'))
+    player = relationship("Player", foreign_keys=[player_id])
     peer_player_id = Column(UUID(as_uuid=True), ForeignKey('players.id'), nullable=True)
+    peer_player = relationship("Player", foreign_keys=[peer_player_id])
     qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'), nullable=True)
+    qr_code = relationship("QRCode")
     scan_time = Column(DateTime(timezone=True), server_default=func.now())
     scan_type = Column(String, nullable=False, server_default="standard")
     proximity_status = Column(String) # Tracks status of geofenced validation

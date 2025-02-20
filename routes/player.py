@@ -1,9 +1,10 @@
 from pydantic import BaseModel
 from cryptography.fernet import InvalidToken
 import math  # For distance calculation
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, or_, func
+from sqlalchemy.orm import joinedload
 from database import get_db
 from models import Player, PlayerScan, QRCode
 from schemas import PlayerHistory, ScanHistoryItem, Player as PlayerSchema, PeerScanRequest, PeerScanResponse, ErrorResponse
@@ -25,31 +26,71 @@ PEER_SCAN_COOLDOWN = os.getenv("PEER_SCAN_COOLDOWN",5 * 60)
 cipher = Fernet(STRING_ENCODE_SECRET_KEY)
 router = APIRouter()
 
+async def get_pagination_params(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(10, ge=1, le=50, description="Number of records to return")
+):
+    return {"skip": skip, "limit": limit}
+
 # Get player history
 @router.get("/my_history", response_model=PlayerHistory)
 async def get_player_history(
     current_user: Player = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(get_pagination_params)
 ):
-    print("current user:",  current_user.username)
-    query = select(PlayerScan, QRCode).join(
-        QRCode,
-        PlayerScan.qr_code_id == QRCode.id
-    ).where(PlayerScan.player_id == current_user.id)
+    skip = pagination["skip"]
+    limit = pagination["limit"]
 
-    result = await db.execute(query)
-    scans = result.all()
+    # Base query for PlayerScan
+    base_query = select(PlayerScan).where(PlayerScan.player_id == current_user.id)
 
-    scan_history = [
-        ScanHistoryItem(
-            qr_code=qr.code,
-            scan_time=scan.scan_time,
-            success=scan.success
+    # Count total scans
+    total_query = select(func.count()).select_from(base_query.subquery())
+    total_result = await db.execute(total_query)
+    total = total_result.scalar()
+
+    # Fetch paginated scans with explicit column selection
+    query = (
+        select(
+            PlayerScan.scan_time,
+            PlayerScan.success,
+            PlayerScan.scan_type,
+            PlayerScan.proximity_status,
+            QRCode.code.label("qr_code"),
+            Player.username.label("peer_username")
         )
-        for scan, qr in scans
-    ]
+        .select_from(PlayerScan)
+        .outerjoin(QRCode, PlayerScan.qr_code_id == QRCode.id)
+        .outerjoin(Player, PlayerScan.peer_player_id == Player.id)
+        .where(PlayerScan.player_id == current_user.id)
+        .order_by(PlayerScan.scan_time.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    scans = result.fetchall()  # Returns tuples with selected columns
 
-    return PlayerHistory(scans=scan_history)
+    # Build response
+    scan_history = []
+    for scan_tuple in scans:
+        scan_time, success, scan_type, proximity_status, qr_code, peer_username = scan_tuple
+        item = ScanHistoryItem(
+            scan_time=scan_time,
+            success=success,
+            scan_type=scan_type,
+            proximity_status=proximity_status,
+            qr_code=qr_code,
+            peer_username=peer_username
+        )
+        scan_history.append(item)
+
+    return PlayerHistory(
+        total=total,
+        skip=skip,
+        limit=limit,
+        scans=scan_history
+    )
 
 # Get current player profile
 @router.get("/me", response_model=PlayerSchema)

@@ -45,10 +45,7 @@ def login_page():
             box_size=10,
             border=4,
         )
-        qr.add_data(json.dumps({
-            "type": "login",
-            "session_id": session['session_id']
-        }))
+        qr.add_data(f"arg://login.{session['session_id']}")
         qr.make(fit=True)
 
         # Create QR code image

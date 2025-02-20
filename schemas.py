@@ -45,11 +45,17 @@ class QRCodeMetadata(BaseModel):
     requires_location: bool
 
 class ScanHistoryItem(BaseModel):
-    qr_code: str
     scan_time: datetime
     success: bool
+    scan_type: str
+    proximity_status: Optional[str] = None
+    qr_code: Optional[str] = None
+    peer_username: Optional[str] = None
 
 class PlayerHistory(BaseModel):
+    total: int
+    skip: int
+    limit: int
     scans: List[ScanHistoryItem]
 
 class WebSocketMessage(BaseModel):
