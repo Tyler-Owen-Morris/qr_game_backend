@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
-from routes import qr, player, websocket, auth
+from routes import qr, player, websocket, auth, hunts
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -24,6 +24,7 @@ app.include_router(qr.router, prefix="/qr", tags=["qr"])
 app.include_router(player.router, prefix="/player", tags=["player"])
 app.include_router(websocket.router, tags=["websocket"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(hunts.router, prefix="/hunts", tags=["hunts"])
 
 @app.on_event("startup")
 async def startup_event():

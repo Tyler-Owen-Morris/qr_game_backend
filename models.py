@@ -58,3 +58,28 @@ class PlayerScan(Base):
     longitude = Column(Float, nullable=True)
     attempt_number = Column(Integer, default=1)  # Tracks number of times player scanned this code
     next_scan_available_at = Column(DateTime, nullable=True)  # When player can scan it again (null if one-time use)
+
+class Hunt(Base):
+    __tablename__ = "hunts"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+
+class HuntStep(Base):
+    __tablename__ = "hunt_steps"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    hunt_id = Column(UUID(as_uuid=True), ForeignKey('hunts.id'))
+    qr_code_id = Column(UUID(as_uuid=True), ForeignKey('qr_codes.id'))
+    order = Column(Integer, nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    hint = Column(String, nullable=True)
+
+class PlayerHuntProgress(Base):
+    __tablename__ = "player_hunt_progress"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id = Column(UUID(as_uuid=True), ForeignKey('players.id'))
+    hunt_id = Column(UUID(as_uuid=True), ForeignKey('hunts.id'))
+    current_step = Column(Integer, default=0)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    last_attempt_at = Column(DateTime(timezone=True), server_default=func.now())

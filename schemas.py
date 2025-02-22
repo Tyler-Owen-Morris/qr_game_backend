@@ -77,3 +77,26 @@ class PeerScanResponse(BaseModel):
 class ErrorResponse(BaseModel): # Not currently used
     status: str = "error"
     message: str
+
+class HuntStepResponse(BaseModel):
+    latitude: float
+    longitude: float
+    hint: Optional[str] = None
+
+class HuntResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    steps: int
+    current_step: Optional[HuntStepResponse] = None
+
+class HuntScanRequest(BaseModel):
+    hunt_id: str
+    qr_code: str
+    latitude: float
+    longitude: float
+
+class HuntScanResponse(BaseModel):
+    status: str  # "success" or "completed"
+    next_step: Optional[HuntStepResponse] = None
+    reward: Optional[int] = None
