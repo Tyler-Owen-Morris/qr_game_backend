@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
-from models import QRCode, PlayerScan, Player
+from models import QRCode, PlayerScan, Player, PlayerHuntProgress
 from schemas import QRScanRequest, QRScanResponse, QRCodeMetadata
 from utils.location import validate_location
 from utils.generate_qr_code import generate_qr_code
@@ -75,6 +75,23 @@ async def scan_qr_code(
     db.add(new_scan)
     await db.commit()
 
+    hunt_status = None
+    if qr_code and qr_code.scan_type == "transportation" and qr_code.reward_data.get("hunt_id"):
+        hunt_id = qr_code.reward_data["hunt_id"]
+        progress = await db.scalar(select(PlayerHuntProgress).where(
+            PlayerHuntProgress.player_id == current_user.id,
+            PlayerHuntProgress.hunt_id == hunt_id
+        ))
+        if progress:
+            if progress.completed_at:
+                hunt_status = "completed"
+            elif progress.abandoned_at:
+                hunt_status = "abandoned"
+            else:
+                hunt_status = "active"
+        else:
+            hunt_status = "new"
+
     print("qr_code:", qr_code.reward_data)
     return QRScanResponse(
         status="success",
@@ -82,7 +99,8 @@ async def scan_qr_code(
         reward_data=qr_code.reward_data if qr_code.reward_data else None,
         message="Location check failed" if not location_valid else None,
         location_valid=location_valid,
-        ok=True
+        ok=True,
+        hunt_status=hunt_status
     )
 
 @router.get("/{code}", response_model=QRCodeMetadata)

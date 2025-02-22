@@ -83,3 +83,4 @@ class PlayerHuntProgress(Base):
     current_step = Column(Integer, default=0)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     last_attempt_at = Column(DateTime(timezone=True), server_default=func.now())
+    abandoned_at = Column(DateTime(timezone=True), nullable=True)

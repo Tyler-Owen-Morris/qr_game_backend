@@ -37,6 +37,7 @@ class QRScanResponse(BaseModel):
     message: Optional[str]
     location_valid: Optional[bool]
     ok: Optional[bool]
+    hunt_status: Optional[str] = None
 
 class QRCodeMetadata(BaseModel):
     code: str
@@ -100,3 +101,9 @@ class HuntScanResponse(BaseModel):
     status: str  # "success" or "completed"
     next_step: Optional[HuntStepResponse] = None
     reward: Optional[int] = None
+
+class ActiveHuntResponse(BaseModel):
+    hunts: List[HuntResponse]
+    total: int
+    skip: int
+    limit: int
