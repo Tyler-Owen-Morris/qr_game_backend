@@ -5,3 +5,6 @@
 */__pycache__
 
 routes/__pycache__/*
+
+/_huntloader/
+/_huntloader/*
