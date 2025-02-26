@@ -20,6 +20,7 @@ import math
 from datetime import datetime, timedelta
 from utils.location import calculate_distance
 from .websocket import manager
+from time import perf_counter
 
 STRING_ENCODE_SECRET_KEY = os.getenv("STRING_ENCODE_SECRET_KEY", "iNbKium-f8sdpM3yp_g_ZoXz3nin2psxJ7_oPvJN7kU=")
 PEER_SCAN_COOLDOWN = os.getenv("PEER_SCAN_COOLDOWN",5 * 60)
@@ -163,27 +164,40 @@ async def generate_peer_scan_qr(
     current_user: Player = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    print("loc",location)
+    start = perf_counter()
+    print("loc",location, flush=True)
     if "location" not in location or ("latitude" not in location['location'] or "longitude" not in location['location']):
         raise HTTPException(status_code=400, detail="Invalid location data")
-
+    validation_time = perf_counter()
+    print(f"Validation took: {validation_time - start:.4f}s", flush=True)
     # Create payload with player ID, location, and timestamp
     payload = {
         "player_id": str(current_user.id),
         "location": location['location'],
         "timestamp": int(time.time())  # Unix timestamp
     }
+    payload_time = perf_counter()
+    print(f"Payload creation took: {payload_time - validation_time:.4f}s", flush=True)
 
     # Convert to JSON string
     payload_str = json.dumps(payload)
+    json_time = perf_counter()
+    print(f"JSON serialization took: {json_time - payload_time:.4f}s", flush=True)
 
     # Encrypt the string
     encrypted_payload = cipher.encrypt(payload_str.encode())
+    encrypt_time = perf_counter()
+    print(f"Encryption took: {encrypt_time - json_time:.4f}s", flush=True)
 
     # Encode in Base64 for easier QR encoding
     encoded_qr_string = base64.urlsafe_b64encode(encrypted_payload).decode()
+    encode_time = perf_counter()
+    print(f"Base64 encoding took: {encode_time - encrypt_time:.4f}s", flush=True)
 
-    return {"peer_qr": f"arg://peer.{encoded_qr_string}"}
+    response = {"peer_qr": f"arg://peer.{encoded_qr_string}"}
+    end = perf_counter()
+    print(f"Total time: {end - start:.4f}s", flush=True)
+    return response
 
 @router.post("/peer_scan/validate", response_model=PeerScanResponse)
 async def validate_peer_scan(
