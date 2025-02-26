@@ -15,8 +15,3 @@ class RPSHandler(GameHandler):
         if (c1 == "rock" and c2 == "scissors") or (c1 == "scissors" and c2 == "paper") or (c1 == "paper" and c2 == "rock"):
             return p1
         return p2
-
-game_registry = {
-    "rps": RPSHandler,
-    # Add more: "ttt": TicTacToeHandler, etc.
-}

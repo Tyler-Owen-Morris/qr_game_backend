@@ -3,6 +3,7 @@
 
 /__pycache__
 */__pycache__
+utils/minigames/__pycache__/*
 
 routes/__pycache__/*
 

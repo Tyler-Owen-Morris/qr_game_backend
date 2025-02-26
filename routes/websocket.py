@@ -156,19 +156,41 @@ async def player_websocket_endpoint(websocket: WebSocket, player_id: str, player
             data = await websocket.receive_text()
             data_dict = json.loads(data)
             if data_dict.get("event") == "move":
-                print("move detected",flush=True)
+                print("move detected", data_dict,flush=True)
                 game = manager.games.get(player_id)
                 if game and data_dict["player_id"] in game.player_ids:
                     game_continues = await game.process_move(data_dict["player_id"], data_dict["data"])
                     if not game_continues:
                         winner = await game.check_winner()
+                        if not winner:
+                            winner = "tie"
                         await manager.broadcast_to_player(player_id, json.dumps({
                             "event": "result",
                             "winner": winner
                         }))
+                        # for ws, _ in manager.active_player_connections[player_id]:
+                        #     await ws.close()
                         del manager.games[player_id]  # Clear game state after result
-            # Optionally broadcast other data if needed (e.g., chat messages)
-            # await manager.broadcast_to_player(player_id, data)
+            elif data_dict.get("event") == "request_game_state":
+                print("Received request_game_state from:", data_dict["player_id"])
+                game = manager.games.get(player_id)
+                if game:
+                    # Resend existing game state
+                    await manager.broadcast_to_player(player_id, json.dumps({
+                        "event": "start_game",
+                        "game_type": "rps",
+                        "players": game.player_ids
+                    }))
+                elif len(manager.active_player_connections[player_id]) == 2:
+                    # Create new game if 2 players are connected
+                    player_ids = [pid for _, pid in manager.active_player_connections[player_id]]
+                    game_type = "rps"
+                    manager.games[player_id] = game_registry[game_type](player_ids)
+                    await manager.broadcast_to_player(player_id, json.dumps({
+                        "event": "start_game",
+                        "game_type": game_type,
+                        "players": player_ids
+                    }))
     except WebSocketDisconnect:
         manager.disconnect_player(websocket, player_id)
 
