@@ -10,6 +10,9 @@ import random
 #from auth.utils import get_current_user_from_token
 from utils.minigames.rps_handler import RPSHandler
 from utils.minigames.GameHandler import GameHandler
+from urllib.parse import urlparse, urlunparse
+from dotenv import load_dotenv
+load_dotenv()
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -96,9 +99,14 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 async def database_listener():
-    conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    raw_url = os.getenv("DATABASE_URL")
+    parsed = urlparse(raw_url)
+    clean_url = urlunparse(("postgresql", parsed.netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+    conn = await asyncpg.connect(clean_url)
     await conn.add_listener('qr_scan', handle_notification)
     await conn.add_listener('player_interaction', handle_notification)
+    while True:
+        await asyncio.sleep(1)
 
 async def handle_notification(conn, pid, channel, payload):
     data = json.loads(payload)

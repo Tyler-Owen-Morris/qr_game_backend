@@ -4,9 +4,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import urllib.parse
 
+from dotenv import load_dotenv
+load_dotenv()
 # Get the database URL from environment
-# database_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://owenmorris@localhost:5432/qrhunter")
-database_url = "postgresql+asyncpg://owenmorris@localhost:5432/qrhunter"
+database_url = os.getenv("DATABASE_URL", "postgresql://owenmorris@localhost:5432/qrhunter")
 print("Database URL:",database_url)
 
 # Parse the URL to remove ssl parameters
